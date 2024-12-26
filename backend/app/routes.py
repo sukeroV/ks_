@@ -315,7 +315,7 @@ def get_error_records(user_id):
             PracticeRecord.user_id == user_id
         )
 
-        # 根据导出状态过滤
+        # 根���导出状态过滤
         if not show_exported:
             query = query.filter(ErrorRecord.is_exported == False)
             
@@ -469,99 +469,58 @@ def login():
     except Exception as e:
         return jsonify({"error": "登录失败，请稍后重试"}), 400 
 
-@main.route('/api/answer-record', methods=['POST'])
-def create_answer_record():
-    """创建答题记录"""
+@main.route('/api/answer-records/batch', methods=['POST'])
+def create_answer_records_batch():
+    """批量创建答题记录"""
     try:
         data = request.get_json()
-        current_app.logger.info(f"Received answer data: {data}")
+        answers = data.get('answers', [])
+        results = []
         
-        # 获取表达式信息
-        expression = Expression.query.get(data['expression_id'])
-        if not expression:
-            return jsonify({"error": "表达式不存在"}), 404
+        for answer in answers:
+            expression_id = answer.get('expression_id')
+            user_answer = answer.get('user_answer')
+            answer_time = answer.get('answer_time', 0)
             
-        # 获取练习集信息
-        exercise_set = ExerciseSet.query.get(expression.exercise_set_id)
-        if not exercise_set:
-            return jsonify({"error": "练习集不存在"}), 404
-
-        # 转换答案为整数进行比较
-        user_answer = int(data['user_answer'])
-        correct_answer = int(expression.answer)
-        is_correct = user_answer == correct_answer
-        
-        # 创建答题记录
-        answer_record = AnswerRecord(
-            expression_id=data['expression_id'],
-            user_answer=user_answer,
-            is_correct=is_correct,
-            answer_time=data['answer_time']
-        )
-        db.session.add(answer_record)
-        db.session.flush()
-        
-        # 如果答错了，创建错题记录
-        if not is_correct:
-            error_record = ErrorRecord(answer_record_id=answer_record.answer_record_id)
-            db.session.add(error_record)
-
-        # 检查是否已存在练习记录
-        practice_record = PracticeRecord.query.filter_by(
-            user_id=exercise_set.user_id,
-            exercise_set_id=exercise_set.exercise_set_id,
-            is_completed=False
-        ).first()
-
-        if not practice_record:
-            # 创建新的练习记录
-            practice_record = PracticeRecord(
-                user_id=exercise_set.user_id,
-                exercise_set_id=exercise_set.exercise_set_id,
-                duration=0,  # 初始化时长
-                is_timeout=False,
-                total_expressions=exercise_set.total_expressions,
-                bracket_expressions=exercise_set.bracket_expressions,
-                time_limit=exercise_set.time_limit,
-                operators=exercise_set.operators,
-                operator_count=exercise_set.operator_count,
-                min_number=exercise_set.min_number,
-                max_number=exercise_set.max_number,
-                completion_time=datetime.now(Config.CHINA_TZ),
-                is_completed=False  # 记为未完成
+            # 获取表达式信息
+            expression = Expression.query.get(expression_id)
+            if not expression:
+                continue
+                
+            # 判断答案是否正确（允许0.01的误差）
+            is_correct = abs(float(user_answer) - expression.answer) < 0.01
+            
+            # 创建答题记录
+            answer_record = AnswerRecord(
+                expression_id=expression_id,
+                user_answer=user_answer,
+                is_correct=is_correct,
+                answer_time=answer_time
             )
-            db.session.add(practice_record)
-
-        # 更新练习记录
-        practice_record.duration = data.get('total_time', 0)  # 更新总用时
-        practice_record.completion_time = datetime.now(Config.CHINA_TZ)
+            db.session.add(answer_record)
+            db.session.flush()
+            
+            # 如果答错了，创建错题记录
+            if not is_correct:
+                error_record = ErrorRecord(
+                    answer_record_id=answer_record.answer_record_id,
+                    is_exported=False
+                )
+                db.session.add(error_record)
+            
+            results.append({
+                "expression_id": expression_id,
+                "is_correct": is_correct,
+                "correct_answer": expression.answer
+            })
         
-        # 检查是否完成所有题目
-        answered_count = AnswerRecord.query.join(
-            Expression,
-            AnswerRecord.expression_id == Expression.expression_id
-        ).filter(
-            Expression.exercise_set_id == exercise_set.exercise_set_id
-        ).count()
-
-        if answered_count >= exercise_set.total_expressions:
-            practice_record.is_completed = True
-
         db.session.commit()
-        
-        return jsonify({
-            "message": "答题记录创建成功",
-            "is_correct": is_correct,
-            "correct_answer": correct_answer,
-            "user_answer": user_answer,
-            "answer_record_id": answer_record.answer_record_id,
-            "is_completed": practice_record.is_completed
-        }), 201
+        return jsonify({"results": results}), 200
         
     except Exception as e:
-        current_app.logger.error(f"Error creating answer record: {str(e)}")
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+        current_app.logger.error(f"Error creating answer records: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @main.route('/api/practice-records', methods=['GET'])
 def get_practice_records():
@@ -847,7 +806,7 @@ def export_error_records(user_id):
             doc.add_paragraph(f'错题数量：{len(mistakes)} 道')
             doc.add_paragraph()  # 添加空行
             
-            # 添加错题列表
+            # 添加��题列表
             for idx, mistake in enumerate(mistakes, 1):
                 # 添加题目编号和算式
                 p = doc.add_paragraph()
@@ -917,3 +876,45 @@ def export_error_records(user_id):
         db.session.rollback()
         current_app.logger.error(f"Error exporting error records: {str(e)}")
         return jsonify({"error": str(e)}), 500 
+
+@main.route('/api/exercise-set/<int:exercise_set_id>/complete', methods=['POST'])
+def complete_exercise_set(exercise_set_id):
+    """完成练习"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        duration = data.get('duration', 0)
+        is_timeout = bool(data.get('is_timeout', False))  # 确保是布尔值
+        
+        # 获取练习集信息
+        exercise_set = ExerciseSet.query.get(exercise_set_id)
+        if not exercise_set:
+            return jsonify({"error": "练习集不存在"}), 404
+            
+        # 创建练��记录
+        practice_record = PracticeRecord(
+            user_id=str(user_id),  # 确保是字符串
+            exercise_set_id=int(exercise_set_id),  # 确保是整数
+            completion_time=datetime.now(Config.CHINA_TZ),
+            duration=int(duration),  # 确保是整数
+            is_timeout=is_timeout,
+            is_completed=True,
+            # 从练习集获取配置信息
+            total_expressions=exercise_set.total_expressions,
+            bracket_expressions=exercise_set.bracket_expressions,
+            time_limit=exercise_set.time_limit,
+            operators=exercise_set.operators,
+            operator_count=exercise_set.operator_count,
+            min_number=exercise_set.min_number,
+            max_number=exercise_set.max_number
+        )
+        
+        db.session.add(practice_record)
+        db.session.commit()
+        
+        return jsonify({"message": "练习完成"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error completing exercise set: {str(e)}")
+        return jsonify({"error": str(e)}), 500
