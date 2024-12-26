@@ -32,7 +32,7 @@
           </div>
         </div>
 
-        <!-- 题目列表 -->
+        <!-- 题目列表 uuu-->
         <div class="expressions-list">
           <div 
             v-for="(expression, index) in expressions" 
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
@@ -86,7 +86,7 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
 const isSubmitting = ref(false)
-const remainingTime = ref(0)
+const remainingTime = ref<number>(0)
 const timer = ref<number | null>(null)
 const expressions = ref<any[]>([])
 const answers = ref<string[]>([])
@@ -104,8 +104,53 @@ const answerResults = ref<any[]>([])
 // 格式化时间
 const formatTime = (seconds: number) => {
   const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
+  const remainingSeconds = Math.floor(seconds % 60)
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
+// 添加本地存储相关的方法
+const STORAGE_KEY = (id: string) => `practice_${id}_`
+
+// 保存答题状态到本地存储
+const saveProgress = () => {
+  const practiceId = route.params.id as string
+  const data = {
+    answers: answers.value,
+    remainingTime: remainingTime.value,
+    startTimes: startTimes.value,
+    pauseTimes: pauseTimes.value,
+    answerTimes: answerTimes.value,
+    isCompleted: isCompleted.value
+  }
+  
+  // 使用一次性保存所有数据，避免多次写入
+  localStorage.setItem(STORAGE_KEY(practiceId), JSON.stringify(data))
+}
+
+// 从本地存储恢复答题状态
+const loadProgress = () => {
+  const practiceId = route.params.id as string
+  const savedData = localStorage.getItem(STORAGE_KEY(practiceId))
+  
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData)
+      answers.value = data.answers || []
+      remainingTime.value = parseInt(data.remainingTime) || 0
+      startTimes.value = data.startTimes || {}
+      pauseTimes.value = data.pauseTimes || {}
+      answerTimes.value = data.answerTimes || {}
+      isCompleted.value = data.isCompleted || false
+    } catch (e) {
+      console.error('加载保存的进度失败:', e)
+    }
+  }
+}
+
+// 清除本地存储的答题状态
+const clearProgress = () => {
+  const practiceId = route.params.id as string
+  localStorage.removeItem(STORAGE_KEY(practiceId))
 }
 
 // 获取练习数据
@@ -115,17 +160,28 @@ const fetchExerciseData = async () => {
     const exerciseResponse = await axios.get(`/api/exercise-set/${route.params.id}`)
     exerciseSet.value = exerciseResponse.data
     
-    if (exerciseSet.value.time_limit > 0) {
-      remainingTime.value = exerciseSet.value.time_limit * 60
-      startTimer()
-    }
-    
     const expressionsResponse = await axios.get(
       `/api/exercise-set/${route.params.id}/expressions`
     )
     expressions.value = expressionsResponse.data
-    answers.value = new Array(expressions.value.length).fill('')
     
+    // 初始化答案数组
+    if (!answers.value.length) {
+      answers.value = new Array(expressions.value.length).fill('')
+    }
+    
+    // 尝试加载已保存的进度
+    loadProgress()
+    
+    // 只有在没有保存的时间的情况下才初始化时间
+    if (remainingTime.value === 0 && exerciseSet.value.time_limit > 0) {
+      remainingTime.value = exerciseSet.value.time_limit * 60
+    }
+    
+    // 如果有剩余时间且未完成，启动计时器
+    if (remainingTime.value > 0 && !isCompleted.value) {
+      startTimer()
+    }
   } catch (error) {
     console.error('获取练习数据失败:', error)
     ElMessage.error('获取练习数据失败')
@@ -137,13 +193,20 @@ const fetchExerciseData = async () => {
 
 // 开始计时器
 const startTimer = () => {
-  timer.value = window.setInterval(() => {
-    if (remainingTime.value > 0) {
-      remainingTime.value--
-    } else {
-      // 时间到了自动提交
-      submitAllAnswers(false)  // 改为 false，不再标记为超时
+  // 清除可能存在的旧计时器
+  if (timer.value) {
+    clearInterval(timer.value)
+  }
+  
+  timer.value = setInterval(() => {
+    if (remainingTime.value <= 0) {
+      clearInterval(timer.value)
+      handleTimeUp()
+      return
     }
+    remainingTime.value--
+    // 每次更新时间时保存进度
+    saveProgress()
   }, 1000)
 }
 
@@ -178,7 +241,16 @@ const handleBlur = (index: number) => {
   }
 }
 
-// 提交所有答案
+// 修改倒计时处理
+const handleTimeUp = async () => {
+  if (isCompleted.value) return // 如果已经完成了就不再处理
+  
+  ElMessage.warning('时间到，练习已自动提交！')
+  // 调用提交答案方法，传入 true 表示是超时提交
+  await submitAllAnswers(true)
+}
+
+// 修改提交答案的方法
 const submitAllAnswers = async (isTimeout = false) => {
   if (isSubmitting.value) return
   
@@ -191,52 +263,52 @@ const submitAllAnswers = async (isTimeout = false) => {
       timer.value = null
     }
     
-    // 计算所有未完成计时的���目
+    // 计算所有未完成计时的题目
     expressions.value.forEach((_, index) => {
       if (startTimes.value[index] && !pauseTimes.value[index]) {
-        handleBlur(index);
+        handleBlur(index)
       }
-    });
+    })
 
     // 准备批量提交的数据
     const answersData = expressions.value.map((expr, index) => {
-      const answerTime = Math.round(answerTimes.value[index] || 0); // 四舍五入到整数秒
+      const answerTime = Math.round(answerTimes.value[index] || 0)
       return {
         expression_id: expr.expression_id,
-        user_answer: answers.value[index] || 0,
+        user_answer: answers.value[index] || 0, // 如果没答题就默认为0
         answer_time: answerTime
-      };
-    });
+      }
+    })
 
-    // 检查所有题目是否已完成（只在手动提交时检查）
+    // 只在手动提交时检查未完成题目
     if (!isTimeout) {
-      const unfinished = answersData.findIndex((data, index) => !answers.value[index]);
+      const unfinished = answersData.findIndex((data, index) => !answers.value[index])
       if (unfinished !== -1) {
-        ElMessage.warning(`请完成第 ${unfinished + 1} 题`);
-        answerInputs.value[unfinished]?.focus();
-        isSubmitting.value = false;
+        ElMessage.warning(`请完成第 ${unfinished + 1} 题`)
+        answerInputs.value[unfinished]?.focus()
+        isSubmitting.value = false
         // 如果有未完成的题目，重新启动计时器
         if (remainingTime.value > 0) {
-          startTimer();
+          startTimer()
         }
-        return;
+        return
       }
     }
 
     // 批量提交答案
     const response = await axios.post('/api/answer-records/batch', {
       answers: answersData
-    });
+    })
 
     // 更新答题结果
-    const results = response.data.results;
-    let correctCount = 0;
-    answerResults.value = results;  // 保存每道题的结果
+    const results = response.data.results
+    let correctCount = 0
+    answerResults.value = results  // 保存每道题的结果
     results.forEach((result: any) => {
       if (result.is_correct) {
-        correctCount++;
+        correctCount++
       }
-    });
+    })
 
     // 完成练习
     const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -245,7 +317,7 @@ const submitAllAnswers = async (isTimeout = false) => {
     await axios.post(`/api/exercise-set/${route.params.id}/complete`, {
       user_id: user.user_id,
       duration: actualDuration,
-      is_timeout: false
+      is_timeout: isTimeout // 添加是否超时标记
     })
 
     // 更新状态
@@ -253,6 +325,12 @@ const submitAllAnswers = async (isTimeout = false) => {
     correctAnswers.value = correctCount
     totalQuestions.value = expressions.value.length
     remainingTime.value = 0
+
+    // 显示结果统计
+    ElMessage.success(`练习完成！正确率: ${((correctCount / expressions.value.length) * 100).toFixed(1)}%`)
+
+    // 提交成功后清除本地存储
+    clearProgress()
   } catch (error) {
     console.error('提交答案失败:', error)
     ElMessage.error('提交答案失败')
@@ -261,13 +339,41 @@ const submitAllAnswers = async (isTimeout = false) => {
   }
 }
 
+// 添加自动保存功能
+let autoSaveTimer: number | null = null
+
+const startAutoSave = () => {
+  autoSaveTimer = setInterval(() => {
+    if (!isCompleted.value) {
+      saveProgress()
+    }
+  }, 1000) // 每秒保存一次
+}
+
+// 在组件挂载时启动自动保存
 onMounted(() => {
   fetchExerciseData()
+  startAutoSave()
 })
 
-onUnmounted(() => {
+// 在组件卸载时清理
+onBeforeUnmount(() => {
   if (timer.value) {
     clearInterval(timer.value)
+  }
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer)
+  }
+  // 如果练习未完成，保存进度
+  if (!isCompleted.value) {
+    saveProgress()
+  }
+})
+
+// 监听页面刷新和关闭
+window.addEventListener('beforeunload', () => {
+  if (!isCompleted.value) {
+    saveProgress()
   }
 })
 </script>
@@ -437,5 +543,30 @@ onUnmounted(() => {
 .correct-answer {
   color: #f56c6c;
   font-size: 14px;
+}
+
+.timer-wrapper {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+.timer-wrapper.time-warning {
+  background-color: #fef0f0;
+  color: #f56c6c;
+}
+
+.remaining-time {
+  font-size: 16px;
+  font-weight: 500;
+  font-family: monospace;
 }
 </style> 
