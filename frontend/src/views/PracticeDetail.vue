@@ -11,6 +11,27 @@
       </template>
 
       <div class="practice-content">
+        <!-- 统计信息 -->
+        <div v-if="isCompleted" class="statistics-bar">
+          <div class="stat-item">
+            <span>总题数：{{ totalQuestions }}</span>
+          </div>
+          <div class="stat-item">
+            <span>正确题数：{{ correctAnswers }}</span>
+          </div>
+          <div class="stat-item">
+            <span>正确率：{{ ((correctAnswers / totalQuestions) * 100).toFixed(1) }}%</span>
+          </div>
+          <div class="action-buttons">
+            <el-button type="primary" size="small" @click="router.push('/history')">
+              查看练习历史
+            </el-button>
+            <el-button size="small" @click="router.push('/practice')">
+              继续练习
+            </el-button>
+          </div>
+        </div>
+
         <!-- 题目列表 -->
         <div class="expressions-list">
           <div 
@@ -18,23 +39,29 @@
             :key="index"
             class="expression-item"
           >
-            <span class="expression-number">{{ index + 1 }}.</span>
-            <span class="expression-text">{{ expression.expression_text }} = </span>
-            <el-input
-              v-model="answers[index]"
-              type="number"
-              :placeholder="`请输入答案`"
-              class="answer-input"
-              :ref="el => answerInputs[index] = el"
-              @focus="handleFocus(index)"
-              @blur="handleBlur(index)"
-              @keyup.enter="focusNext(index)"
-            />
+            <div class="expression-content">
+              <span class="expression-number">{{ index + 1 }}.</span>
+              <span class="expression-text">{{ expression.expression_text }} = </span>
+              <el-input
+                v-model="answers[index]"
+                type="number"
+                :placeholder="`请输入答案`"
+                class="answer-input"
+                :ref="el => answerInputs[index] = el"
+                @focus="handleFocus(index)"
+                @blur="handleBlur(index)"
+                @keyup.enter="focusNext(index)"
+                :disabled="isCompleted"
+              />
+              <span v-if="isCompleted" class="result-text" :class="{ 'wrong': !answerResults[index]?.is_correct, 'correct': answerResults[index]?.is_correct }">
+                正确答案: {{ answerResults[index]?.correct_answer }}
+              </span>
+            </div>
           </div>
         </div>
 
         <!-- 提交按钮 -->
-        <div class="submit-section">
+        <div class="submit-section" v-if="!isCompleted">
           <el-button 
             type="primary" 
             @click="submitAllAnswers"
@@ -46,41 +73,6 @@
         </div>
       </div>
     </el-card>
-
-    <!-- 完成对话框 -->
-    <el-dialog
-      v-model="showResultDialog"
-      title="练习完成"
-      width="400px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="false"
-    >
-      <div class="result-content">
-        <div class="result-item">
-          <span>总题数：</span>
-          <span>{{ totalQuestions }}</span>
-        </div>
-        <div class="result-item">
-          <span>正确题数：</span>
-          <span>{{ correctAnswers }}</span>
-        </div>
-        <div class="result-item">
-          <span>正确率：</span>
-          <span>{{ ((correctAnswers / totalQuestions) * 100).toFixed(1) }}%</span>
-        </div>
-      </div>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="router.push('/history')">
-            查看练习历史
-          </el-button>
-          <el-button @click="router.push('/practice')">
-            继续练习
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -106,6 +98,8 @@ const pauseTimes = ref<{ [key: number]: number }>({})
 const correctAnswers = ref(0)
 const totalQuestions = ref(0)
 const exerciseSet = ref<any>(null)
+const isCompleted = ref(false)
+const answerResults = ref<any[]>([])
 
 // 格式化时间
 const formatTime = (seconds: number) => {
@@ -197,7 +191,7 @@ const submitAllAnswers = async (isTimeout = false) => {
       timer.value = null
     }
     
-    // 计算所有未完成计时的题目
+    // 计算所有未完成计时的���目
     expressions.value.forEach((_, index) => {
       if (startTimes.value[index] && !pauseTimes.value[index]) {
         handleBlur(index);
@@ -237,6 +231,7 @@ const submitAllAnswers = async (isTimeout = false) => {
     // 更新答题结果
     const results = response.data.results;
     let correctCount = 0;
+    answerResults.value = results;  // 保存每道题的结果
     results.forEach((result: any) => {
       if (result.is_correct) {
         correctCount++;
@@ -250,15 +245,14 @@ const submitAllAnswers = async (isTimeout = false) => {
     await axios.post(`/api/exercise-set/${route.params.id}/complete`, {
       user_id: user.user_id,
       duration: actualDuration,
-      is_timeout: false  // 始终设置为 false，因为我们不再使用超时状态
+      is_timeout: false
     })
 
-    // 显示结果对话框
-    showResultDialog.value = true
+    // 更新状态
+    isCompleted.value = true
     correctAnswers.value = correctCount
     totalQuestions.value = expressions.value.length
-    remainingTime.value = 0 // 清空剩余时间显示
-    
+    remainingTime.value = 0
   } catch (error) {
     console.error('提交答案失败:', error)
     ElMessage.error('提交答案失败')
@@ -307,32 +301,52 @@ onUnmounted(() => {
 
 .expressions-list {
   padding: 20px;
+  display: grid;
+  gap: 15px;
 }
 
 .expression-item {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: background-color 0.3s;
+}
+
+.expression-content {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
+  gap: 12px;
 }
 
 .expression-number {
-  font-weight: bold;
-  margin-right: 10px;
+  font-weight: 500;
   color: #909399;
-  width: 30px;
+  min-width: 24px;
 }
 
 .expression-text {
-  font-size: 18px;
-  margin-right: 10px;
+  font-size: 16px;
+  color: #303133;
   flex: 1;
+  text-align: right;
+  padding-right: 8px;
 }
 
 .answer-input {
-  width: 120px;
+  width: 100px;
+}
+
+.result-text {
+  min-width: 120px;
+  font-size: 14px;
+}
+
+.result-text.wrong {
+  color: #f56c6c;
+}
+
+.result-text.correct {
+  color: #67c23a;
 }
 
 .submit-section {
@@ -343,6 +357,31 @@ onUnmounted(() => {
 
 :deep(.el-input__inner) {
   text-align: center;
+  font-size: 16px;
+  padding: 0 8px;
+}
+
+:deep(.el-input.is-disabled .el-input__inner) {
+  color: #606266;
+  -webkit-text-fill-color: #606266;
+  background-color: #f5f7fa;
+}
+
+/* 添加一些响应式布局 */
+@media (max-width: 768px) {
+  .expression-content {
+    flex-wrap: wrap;
+  }
+  
+  .answer-input {
+    width: 80px;
+  }
+  
+  .result-text {
+    width: 100%;
+    margin-top: 8px;
+    text-align: right;
+  }
 }
 
 .result-content {
@@ -358,5 +397,45 @@ onUnmounted(() => {
 
 .dialog-footer {
   text-align: center;
+}
+
+.statistics-bar {
+  background-color: #f0f9eb;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-item {
+  font-size: 16px;
+  color: #67c23a;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.result-indicator {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  gap: 8px;
+}
+
+.correct {
+  color: #67c23a;
+}
+
+.wrong {
+  color: #f56c6c;
+}
+
+.correct-answer {
+  color: #f56c6c;
+  font-size: 14px;
 }
 </style> 
