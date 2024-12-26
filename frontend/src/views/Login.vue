@@ -63,7 +63,7 @@ export default defineComponent({
             const response = await axios.post('/api/login', loginForm)
             localStorage.setItem('user', JSON.stringify(response.data))
             ElMessage.success('登录成功')
-            router.push('/home')
+            router.push('/practice')
           } catch (error: any) {
             const errorMsg = error.response?.data?.error || '登录失败，请稍后重试'
             ElMessage.error(errorMsg)

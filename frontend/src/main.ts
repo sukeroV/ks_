@@ -5,6 +5,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import {Histogram} from "@element-plus/icons-vue";
 
 // 配置axios默认值
 axios.defaults.baseURL = 'http://localhost:6565'
@@ -40,4 +41,5 @@ axios.interceptors.response.use(
 const app = createApp(App)
 app.use(router)
 app.use(ElementPlus)
+app.component('Histogram', Histogram);
 app.mount('#app') 

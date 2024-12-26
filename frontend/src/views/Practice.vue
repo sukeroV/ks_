@@ -233,7 +233,7 @@ const getMaxBracketCount = computed(() => {
 const practiceForm = ref({
   total_expressions: 10,
   bracket_expressions: 1,
-  time_limit: 10,
+  time_limit: 3,
   operators: [] as string[],
   operator_count: 1,
   min_number: 1,

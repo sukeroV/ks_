@@ -18,13 +18,17 @@
             active-text-color="#409EFF"
             router
           >
-            <el-menu-item index="/home" @click="handleMenuClick('/home')">
-              <el-icon><House /></el-icon>首页
-            </el-menu-item>
-            
+
             <el-menu-item index="/practice" @click="handleMenuClick('/practice')">
               <el-icon><Edit /></el-icon>开始练习
             </el-menu-item>
+
+
+            <el-menu-item index="/home" @click="handleMenuClick('/home')">
+              <el-icon><Histogram /></el-icon>可视化
+            </el-menu-item>
+            
+
             
             <el-menu-item index="/history" @click="handleMenuClick('/history')">
               <el-icon><List /></el-icon>练习历史
@@ -80,6 +84,7 @@ import {
   List,
   Warning,
   CaretBottom,
+  Histogram,
   SwitchButton
 } from '@element-plus/icons-vue'
 

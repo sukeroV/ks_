@@ -30,17 +30,18 @@ const router = createRouter({
       component: Layout,
       children: [
         {
-          path: 'home',
-          name: 'Home',
-          component: Home,
-          meta: { requiresAuth: true }
-        },
-        {
           path: 'practice',
           name: 'Practice',
           component: Practice,
           meta: { requiresAuth: true }
         },
+        {
+          path: 'home',
+          name: 'Home',
+          component: Home,
+          meta: { requiresAuth: true }
+        },
+
         {
           path: 'practice/:id',
           name: 'PracticeDetail',
