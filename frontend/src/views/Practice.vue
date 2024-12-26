@@ -32,7 +32,7 @@
           </div>
         </el-form-item>
 
-        <!-- ��有5、6年级显示括号题目数量选择 -->
+        <!-- 5�����6年级显示括号题目数量选择 -->
         <el-form-item 
           v-if="userGrade >= 5" 
           label="括号题目数量" 
@@ -79,6 +79,18 @@
             开始练习
           </el-button>
         </el-form-item>
+
+        <!-- 添加导入导出按钮 -->
+        <div class="import-export-buttons">
+          <el-button plain @click="importExpressions">
+            <el-icon><Upload /></el-icon>
+            导入题目
+          </el-button>
+          <el-button plain @click="exportExpressions">
+            <el-icon><Download /></el-icon>
+            导出题目
+          </el-button>
+        </div>
       </el-form>
     </el-card>
 
@@ -138,6 +150,53 @@
         </el-descriptions>
       </div>
     </el-card>
+
+    <!-- 添加导入对话框 -->
+    <el-dialog
+      v-model="importDialogVisible"
+      title="导入题目"
+      width="400px"
+    >
+      <el-upload
+        class="upload-demo"
+        :action="'/api/expressions/import'"
+        :headers="uploadHeaders"
+        :data="uploadData"
+        :show-file-list="false"
+        :on-success="handleImportSuccess"
+        :on-error="handleImportError"
+        accept=".csv"
+        drag
+      >
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          拖拽文件到此处或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            请上传包含"序号、算式、答案"三列的CSV文件
+          </div>
+        </template>
+      </el-upload>
+    </el-dialog>
+
+    <!-- 添加导出对话框 -->
+    <el-dialog
+      v-model="exportDialogVisible"
+      title="导出题目"
+      width="400px"
+    >
+      <div class="export-options">
+        <el-button @click="handleExport('docx')" type="primary" plain>
+          <el-icon><Document /></el-icon>
+          导出为 Word
+        </el-button>
+        <el-button @click="handleExport('csv')" type="primary" plain>
+          <el-icon><Document /></el-icon>
+          导出为 CSV
+        </el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -145,7 +204,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Minus, ArrowRight } from '@element-plus/icons-vue'
+import { Plus, Minus, ArrowRight, Upload, Download, Document, UploadFilled } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -232,7 +291,88 @@ const startPractice = async () => {
     router.push(`/practice/${response.data.exercise_set_id}`)
   } catch (error) {
     console.error('创建练习失败:', error)
-    ElMessage.error('创建���习失败')
+    ElMessage.error('创建练习失败')
+  }
+}
+
+// 添加导入导出相关的响应式变量
+const importDialogVisible = ref(false)
+const exportDialogVisible = ref(false)
+
+// 打开导入对话框
+const importExpressions = () => {
+  importDialogVisible.value = true
+}
+
+// 打开导出对话框
+const exportExpressions = () => {
+  exportDialogVisible.value = true
+}
+
+// 添加上传所需的数据
+const uploadData = computed(() => ({
+  user_id: JSON.parse(localStorage.getItem('user') || '{}').user_id
+}))
+
+// 添加上传所需的请求头
+const uploadHeaders = {
+  'Accept': 'application/json'
+}
+
+// 处理导入成功
+const handleImportSuccess = (response) => {
+  ElMessage.success('导入成功')
+  importDialogVisible.value = false
+  if (response.exercise_set_id) {
+    router.push(`/practice/${response.exercise_set_id}`)
+  }
+}
+
+// 处理导入失败
+const handleImportError = (error) => {
+  console.error('导入失败:', error)
+  ElMessage.error(error.response?.data?.error || '导入失败')
+}
+
+// 处理导出
+const handleExport = async (format: string) => {
+  try {
+    // 先设置练习配置
+    setupPracticeConfig()
+    
+    const response = await axios.post('/api/expressions/export', {
+      format,
+      config: {
+        total_expressions: practiceForm.value.total_expressions,
+        bracket_expressions: practiceForm.value.bracket_expressions,
+        operators: practiceForm.value.operators,
+        operator_count: practiceForm.value.operator_count,
+        min_number: practiceForm.value.min_number,
+        max_number: practiceForm.value.max_number
+      }
+    }, {
+      responseType: 'blob'
+    })
+    
+    const blob = new Blob([response.data], {
+      type: format === 'docx' 
+        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : 'text/csv;charset=utf-8'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `口算练习_${new Date().toISOString().split('T')[0]}.${format}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    exportDialogVisible.value = false
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
   }
 }
 </script>
@@ -375,6 +515,34 @@ const startPractice = async () => {
 .number-input-wrapper .el-button[disabled] {
   background-color: #f5f7fa;
   border-color: #dcdfe6;
+}
+
+.import-export-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.export-options {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+:deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+:deep(.el-upload) {
+  width: 100%;
+}
+
+.el-upload__tip {
+  text-align: center;
+  margin-top: 8px;
+  color: #909399;
 }
 </style> 
 

@@ -315,7 +315,7 @@ def get_error_records(user_id):
             PracticeRecord.user_id == user_id
         )
 
-        # 根���导出状态过滤
+        # 根据导出状态过滤
         if not show_exported:
             query = query.filter(ErrorRecord.is_exported == False)
             
@@ -560,7 +560,7 @@ def get_practice_records():
                     'id': record.record_id,  # 使用 record_id 而不是 id
                     'exercise_set_id': record.exercise_set_id,
                     'completion_time': record.completion_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'duration': total_duration,  # 使用计算后的总用时
+                    'duration': total_duration,  # 使用计���后的总用时
                     'total_expressions': record.total_expressions,
                     'bracket_expressions': record.bracket_expressions,
                     'time_limit': record.time_limit,
@@ -695,7 +695,7 @@ def get_user_statistics(user_id):
         
         week_stats.reverse()
         
-        # 计算总正确率
+        # 计��总正确率
         average_accuracy = (total_correct / total_questions * 100) if total_questions > 0 else 0
         
         # 修改答题用分布计算逻辑
@@ -806,9 +806,9 @@ def export_error_records(user_id):
             doc.add_paragraph(f'错题数量：{len(mistakes)} 道')
             doc.add_paragraph()  # 添加空行
             
-            # 添加��题列表
+            # 添加题目列表
             for idx, mistake in enumerate(mistakes, 1):
-                # 添加题目编号和算式
+                # 添加题编号和算式
                 p = doc.add_paragraph()
                 p.add_run(f'{idx}. ').bold = True
                 p.add_run(f'算式：{mistake["expression"]}')
@@ -891,7 +891,7 @@ def complete_exercise_set(exercise_set_id):
         if not exercise_set:
             return jsonify({"error": "练习集不存在"}), 404
             
-        # 创建练��记录
+        # 创建练习记录
         practice_record = PracticeRecord(
             user_id=str(user_id),  # 确保是字符串
             exercise_set_id=int(exercise_set_id),  # 确保是整数
@@ -918,3 +918,210 @@ def complete_exercise_set(exercise_set_id):
         db.session.rollback()
         current_app.logger.error(f"Error completing exercise set: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@main.route('/api/expressions/export', methods=['POST'])
+def export_expressions():
+    """导出题目"""
+    try:
+        data = request.get_json()
+        format_type = data.get('format', 'csv')
+        config = data.get('config')
+        
+        # 使用表达式生成器生成题目
+        generator = ExpressionGenerator(
+            selected_operators=config['operators'],
+            operator_count=config['operator_count'],
+            min_number=config['min_number'],
+            max_number=config['max_number']
+        )
+        expressions = generator.generate_expressions(
+            count=config['total_expressions'],
+            bracket_count=config.get('bracket_expressions', 0)
+        )
+        
+        if format_type == 'docx':
+            # Word格式保持不变，包含答案页
+            doc = Document()
+            doc.styles['Normal'].font.name = '宋体'
+            doc.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+            
+            title = doc.add_heading('口算练习', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            info = doc.add_paragraph()
+            info.add_run('练习配置：\n').bold = True
+            info.add_run(f'题目数量：{config["total_expressions"]} 道\n')
+            if config.get('bracket_expressions', 0) > 0:
+                info.add_run(f'括号题目：{config["bracket_expressions"]} 道\n')
+            info.add_run(f'运算符：{", ".join(config["operators"])}\n')
+            info.add_run(f'数值范围：{config["min_number"]} - {config["max_number"]}\n')
+            
+            doc.add_paragraph()
+            
+            # 题目页
+            for i in range(0, len(expressions), 2):
+                p = doc.add_paragraph()
+                p.add_run(f'{i+1}. {expressions[i]["expression_text"]} = ').bold = True
+                p.add_run('_' * 8)
+                if i + 1 < len(expressions):
+                    p.add_run('\t\t')
+                    p.add_run(f'{i+2}. {expressions[i+1]["expression_text"]} = ').bold = True
+                    p.add_run('_' * 8)
+            
+            # 答案页
+            doc.add_page_break()
+            answer_title = doc.add_heading('参考答案', 0)
+            answer_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            for i in range(0, len(expressions), 4):
+                p = doc.add_paragraph()
+                for j in range(4):
+                    if i + j < len(expressions):
+                        p.add_run(f'{i+j+1}. {round(expressions[i+j]["answer"], 2)}\t\t')
+            
+            docx_buffer = BytesIO()
+            doc.save(docx_buffer)
+            docx_buffer.seek(0)
+            
+            return send_file(
+                docx_buffer,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                as_attachment=True,
+                download_name=f'口算练习_{datetime.now(Config.CHINA_TZ).strftime("%Y%m%d")}.docx'
+            )
+            
+        else:  # CSV 格式
+            output = StringIO()
+            writer = csv.writer(output)
+            
+            # 写入表头 - 添加答案列
+            writer.writerow(['序号', '算式', '答案'])
+            
+            # 写入数据 - 答案列留空
+            for idx, expr in enumerate(expressions, 1):
+                writer.writerow([
+                    idx,
+                    expr['expression_text'],
+                    ''  # 空的答案列供用户填写
+                ])
+            
+            csv_data = output.getvalue().encode('utf-8-sig')
+            
+            return send_file(
+                BytesIO(csv_data),
+                mimetype='text/csv;charset=utf-8',
+                as_attachment=True,
+                download_name=f'口算练习_{datetime.now(Config.CHINA_TZ).strftime("%Y%m%d")}.csv'
+            )
+
+    except Exception as e:
+        current_app.logger.error(f"Error exporting expressions: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/expressions/import', methods=['POST'])
+def import_expressions():
+    """导入题目及答案"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "请选择要上传的文件"}), 400
+            
+        file = request.files['file']
+        user_id = request.form.get('user_id')
+        
+        if not file or not user_id:
+            return jsonify({"error": "缺少必要参数"}), 400
+            
+        if not file.filename.endswith('.csv'):
+            return jsonify({"error": "只支持CSV格式文件"}), 400
+
+        # 读取CSV文件
+        content = file.stream.read().decode('utf-8-sig')
+        reader = csv.DictReader(StringIO(content))
+        
+        # 验证CSV文件格式
+        required_columns = ['序号', '算式', '答案']
+        file_columns = reader.fieldnames
+        if not file_columns or not all(col in file_columns for col in required_columns):
+            return jsonify({"error": "CSV文件格式错误，需要包含：序号、算式、答案"}), 400
+            
+        rows = list(reader)
+        if not rows:
+            return jsonify({"error": "文件中没有题目数据"}), 400
+
+        # 创建练习集
+        exercise_set = ExerciseSet(
+            user_id=user_id,
+            total_expressions=len(rows),
+            bracket_expressions=0,
+            time_limit=10,
+            operators='+,-,×,÷',
+            operator_count=2,
+            min_number=1,
+            max_number=100
+        )
+        db.session.add(exercise_set)
+        db.session.flush()
+
+        # 处理每一行数据
+        for row in rows:
+            try:
+                expression_text = row['算式'].strip()
+                user_answer = row['答案'].strip()
+                
+                if not expression_text:
+                    continue
+                    
+                # 计算正确答案
+                correct_answer = eval(expression_text.replace('×', '*').replace('÷', '/'))
+                
+                # 创建表达式记录
+                expression = Expression(
+                    exercise_set_id=exercise_set.exercise_set_id,
+                    expression_text=expression_text,
+                    answer=correct_answer,
+                    has_brackets='(' in expression_text,
+                    operator_count=sum(1 for c in expression_text if c in '+-×÷')
+                )
+                db.session.add(expression)
+                db.session.flush()
+                
+                # 如果用户提供了答案，创建答题记录
+                if user_answer:
+                    try:
+                        user_answer_float = float(user_answer)
+                        is_correct = abs(user_answer_float - correct_answer) < 0.01
+                        
+                        answer_record = AnswerRecord(
+                            expression_id=expression.expression_id,
+                            user_answer=user_answer_float,
+                            is_correct=is_correct,
+                            answer_time=0
+                        )
+                        db.session.add(answer_record)
+                        db.session.flush()
+                        
+                        # 如果答错了，创建错题记录
+                        if not is_correct:
+                            error_record = ErrorRecord(
+                                answer_record_id=answer_record.answer_record_id
+                            )
+                            db.session.add(error_record)
+                            
+                    except ValueError:
+                        continue  # 跳过无效的答案
+                    
+            except Exception as e:
+                current_app.logger.error(f"处理行数据失败: {str(e)}")
+                continue  # 跳过处理失败的行
+                
+        db.session.commit()
+        
+        return jsonify({
+            "message": "导入成功",
+            "exercise_set_id": exercise_set.exercise_set_id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error importing expressions: {str(e)}")
+        return jsonify({"error": f"导入失败: {str(e)}"}), 500
