@@ -32,7 +32,7 @@
           </div>
         </el-form-item>
 
-        <!-- 只有5、6年级显示括号题目数量选择 -->
+        <!-- ��有5、6年级显示括号题目数量选择 -->
         <el-form-item 
           v-if="userGrade >= 5" 
           label="括号题目数量" 
@@ -100,6 +100,13 @@
           <template #default>
             <div class="grade-tip">
               系统会根据您的年级自动生成相应难度的题目
+              <el-link 
+                type="primary" 
+                @click="router.push('/profile')"
+                class="grade-edit-link"
+              >
+                修改年级 <el-icon><ArrowRight /></el-icon>
+              </el-link>
             </div>
           </template>
         </el-alert>
@@ -138,7 +145,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Minus } from '@element-plus/icons-vue'
+import { Plus, Minus, ArrowRight } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -225,7 +232,7 @@ const startPractice = async () => {
     router.push(`/practice/${response.data.exercise_set_id}`)
   } catch (error) {
     console.error('创建练习失败:', error)
-    ElMessage.error('创建练习失败')
+    ElMessage.error('创建���习失败')
   }
 }
 </script>
