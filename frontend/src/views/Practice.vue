@@ -1,155 +1,159 @@
 <template>
   <div class="practice-container">
-    <el-card class="config-card">
-      <template #header>
-        <div class="card-header">
-          <h3>练习配置</h3>
-        </div>
-      </template>
-      
-      <el-form 
-        :model="practiceForm" 
-        :rules="rules" 
-        ref="practiceFormRef"
-        label-position="top"
-      >
-        <!-- 题目数量 -->
-        <el-form-item label="题目数量" prop="total_expressions">
-          <div class="number-input-wrapper">
-            <el-button 
-              @click="decreaseNumber('total_expressions', 5, 5, 100)"
-              :disabled="practiceForm.total_expressions <= 5"
-            >
-              <el-icon><Minus /></el-icon>
-            </el-button>
-            <span class="number-display">{{ practiceForm.total_expressions }}</span>
-            <el-button 
-              @click="increaseNumber('total_expressions', 5, 5, 100)"
-              :disabled="practiceForm.total_expressions >= 100"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-button>
+    <div class="practice-layout">
+      <!-- 左侧练习配置 -->
+      <el-card class="config-card">
+        <template #header>
+          <div class="card-header">
+            <h3>练习配置</h3>
           </div>
-        </el-form-item>
-
-        <!-- 5�����6年级显示括号题目数量选择 -->
-        <el-form-item 
-          v-if="userGrade >= 5" 
-          label="括号题目数量" 
-          prop="bracket_expressions"
-        >
-          <div class="number-input-wrapper">
-            <el-button 
-              @click="decreaseNumber('bracket_expressions', 1, 1, getMaxBracketCount)"
-              :disabled="practiceForm.bracket_expressions <= 1"
-            >
-              <el-icon><Minus /></el-icon>
-            </el-button>
-            <span class="number-display">{{ practiceForm.bracket_expressions }}</span>
-            <el-button 
-              @click="increaseNumber('bracket_expressions', 1, 1, getMaxBracketCount)"
-              :disabled="practiceForm.bracket_expressions >= getMaxBracketCount"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-button>
-          </div>
-        </el-form-item>
+        </template>
         
-        <!-- 时间限制 -->
-        <el-form-item label="时间限制（分钟）" prop="time_limit">
-          <div class="number-input-wrapper">
-            <el-button 
-              @click="decreaseNumber('time_limit', 1, 1, 60)"
-              :disabled="practiceForm.time_limit <= 1"
-            >
-              <el-icon><Minus /></el-icon>
-            </el-button>
-            <span class="number-display">{{ practiceForm.time_limit }}</span>
-            <el-button 
-              @click="increaseNumber('time_limit', 1, 1, 60)"
-              :disabled="practiceForm.time_limit >= 60"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-button>
-          </div>
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" @click="startPractice" style="width: 100%">
-            开始练习
-          </el-button>
-        </el-form-item>
-
-        <!-- 添加导入导出按钮 -->
-        <div class="import-export-buttons">
-          <el-button plain @click="importExpressions">
-            <el-icon><Upload /></el-icon>
-            导入题目
-          </el-button>
-          <el-button plain @click="exportExpressions">
-            <el-icon><Download /></el-icon>
-            导出题目
-          </el-button>
-        </div>
-      </el-form>
-    </el-card>
-
-    <!-- 练习说明 -->
-    <el-card class="info-card">
-      <template #header>
-        <div class="card-header">
-          <h3>练习说明</h3>
-        </div>
-      </template>
-      
-      <div class="info-content">
-        <el-alert
-          :title="`当前年级：${userGrade}年级`"
-          type="info"
-          :closable="false"
-          show-icon
+        <el-form 
+          :model="practiceForm" 
+          :rules="rules" 
+          ref="practiceFormRef"
+          label-position="top"
+          class="config-form"
         >
-          <template #default>
-            <div class="grade-tip">
-              系统会根据您的年级自动生成相应难度的题目
-              <el-link 
-                type="primary" 
-                @click="router.push('/profile')"
-                class="grade-edit-link"
+          <!-- 题目数量 -->
+          <el-form-item label="题目数量" prop="total_expressions">
+            <div class="number-input-wrapper">
+              <el-button 
+                @click="decreaseNumber('total_expressions', 5, 5, 100)"
+                :disabled="practiceForm.total_expressions <= 5"
               >
-                修改年级 <el-icon><ArrowRight /></el-icon>
-              </el-link>
+                <el-icon><Minus /></el-icon>
+              </el-button>
+              <span class="number-display">{{ practiceForm.total_expressions }}</span>
+              <el-button 
+                @click="increaseNumber('total_expressions', 5, 5, 100)"
+                :disabled="practiceForm.total_expressions >= 100"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-button>
             </div>
-          </template>
-        </el-alert>
+          </el-form-item>
 
-        <h4>年级对应说明</h4>
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="一、二年级">
-            <div class="difficulty-detail">
-              - 只含加减法的算式
-              - 数值范围：1-100
-              - 每道题只有一个运算符
+          <!-- 56年级显示括号题目数量选择 -->
+          <el-form-item 
+            v-if="userGrade >= 5" 
+            label="括号题目数量" 
+            prop="bracket_expressions"
+          >
+            <div class="number-input-wrapper">
+              <el-button 
+                @click="decreaseNumber('bracket_expressions', 1, 1, getMaxBracketCount)"
+                :disabled="practiceForm.bracket_expressions <= 1"
+              >
+                <el-icon><Minus /></el-icon>
+              </el-button>
+              <span class="number-display">{{ practiceForm.bracket_expressions }}</span>
+              <el-button 
+                @click="increaseNumber('bracket_expressions', 1, 1, getMaxBracketCount)"
+                :disabled="practiceForm.bracket_expressions >= getMaxBracketCount"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-button>
             </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="三、四年级">
-            <div class="difficulty-detail">
-              - 包含加减乘的算式
-              - 数值范围：1-100
-              - 每道题只有一个运算符
+          </el-form-item>
+          
+          <!-- 时间限制 -->
+          <el-form-item label="时间限制（分钟）" prop="time_limit">
+            <div class="number-input-wrapper">
+              <el-button 
+                @click="decreaseNumber('time_limit', 1, 1, 60)"
+                :disabled="practiceForm.time_limit <= 1"
+              >
+                <el-icon><Minus /></el-icon>
+              </el-button>
+              <span class="number-display">{{ practiceForm.time_limit }}</span>
+              <el-button 
+                @click="increaseNumber('time_limit', 1, 1, 60)"
+                :disabled="practiceForm.time_limit >= 60"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-button>
             </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="五、六年级">
-            <div class="difficulty-detail">
-              - 包含加减乘除的算式
-              - 数值范围：1-100
-              - 最多两个运算符
-              - 包含括号题目
-            </div>
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-    </el-card>
+          </el-form-item>
+          
+          <el-form-item>
+            <el-button type="primary" @click="startPractice" style="width: 100%">
+              开始练习
+            </el-button>
+          </el-form-item>
+
+          <!-- 添加导入导出按钮 -->
+          <div class="import-export-buttons">
+            <el-button plain @click="importExpressions">
+              <el-icon><Upload /></el-icon>
+              导入题目
+            </el-button>
+            <el-button plain @click="exportExpressions">
+              <el-icon><Download /></el-icon>
+              导出题目
+            </el-button>
+          </div>
+        </el-form>
+      </el-card>
+
+      <!-- 右侧练习说明 -->
+      <el-card class="info-card">
+        <template #header>
+          <div class="card-header">
+            <h3>练习说明</h3>
+          </div>
+        </template>
+        
+        <div class="info-content">
+          <el-alert
+            :title="`当前年级：${userGrade}年级`"
+            type="info"
+            :closable="false"
+            show-icon
+          >
+            <template #default>
+              <div class="grade-tip">
+                系统会根据您的年级自动生成相应难度的题目
+                <el-link 
+                  type="primary" 
+                  @click="router.push('/profile')"
+                  class="grade-edit-link"
+                >
+                  修改年级 <el-icon><ArrowRight /></el-icon>
+                </el-link>
+              </div>
+            </template>
+          </el-alert>
+
+          <h4>年级对应说明</h4>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="一、二年级">
+              <div class="difficulty-detail">
+                - 只含加减法的算式
+                - 数值范围：1-100
+                - 每道题只有一个运算符
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="三、四年级">
+              <div class="difficulty-detail">
+                - 包含加减乘的算式
+                - 数值范围：1-100
+                - 每道题只有一个运算符
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="五、六年级">
+              <div class="difficulty-detail">
+                - 包含加减乘除的算式
+                - 数值范围：1-100
+                - 最多两个运算符
+                - 包含括号题目
+              </div>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </el-card>
+    </div>
 
     <!-- 添加导入对话框 -->
     <el-dialog
@@ -376,173 +380,171 @@ const handleExport = async (format: string) => {
   }
 }
 </script>
-
+<!-- 998 -->
 <style scoped>
 .practice-container {
-  max-width: 1200px;
+  height: calc(100vh - 60px); /* 减去顶部导航栏的高度 */
+  padding: 24px;
+  box-sizing: border-box;
+  background-color: #f5f7fa;
+  overflow: hidden; /* 防止出现双滚动条 */
+}
+
+/* 左右布局样式优化 */
+.practice-layout {
+  display: flex;
+  gap: 24px;
+  max-width: 1400px;
   margin: 0 auto;
+  height: 100%; /* 使用父容器的全部高度 */
+}
+
+/* 左侧配置卡片 */
+.config-card {
+  flex: 0 0 380px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 使用父容器的全部高度 */
+}
+
+/* 右侧说明卡片 */
+.info-card {
+  flex: 1;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* 使用父容器的全部高度 */
+}
+
+/* 卡片标题 */
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
+  background-color: #fff;
+  flex-shrink: 0; /* 防止标题被压缩 */
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2f3d;
+}
+
+/* 配置表单和说明内容 */
+.config-form,
+.info-content {
   padding: 20px;
+  flex: 1; /* 占据剩余空间 */
+  overflow-y: auto; /* 内容过多时可滚动 */
 }
 
-.grade-alert {
-  margin-bottom: 20px;
+/* 说明内容容器 */
+.info-content {
+  overflow-y: visible; /* 移除滚动条 */
 }
 
-.grade-info {
-  margin-bottom: 24px;
+/* 数字输入框组样式 */
+.number-input-wrapper {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.number-input-wrapper .el-button {
+  width: 36px;
+  height: 100%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+}
+
+.number-display {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  color: #606266;
+  user-select: none;
+  line-height: 36px;
+}
+
+/* 开始练习按钮 */
+:deep(.el-button--primary) {
+  width: 100%;
+  height: 40px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* 导入导出按钮组 */
+.import-export-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed #ebeef5;
+}
+
+.import-export-buttons .el-button {
+  flex: 1;
+  max-width: 120px;
 }
 
 .grade-tip {
   margin-top: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.difficulty-detail {
-  margin-top: 8px;
-  color: #606266;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-line;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.config-card, .info-card {
-  height: 100%;
-}
-
-.info-content {
-  padding: 0 20px;
-}
-
-.info-content h4 {
-  margin: 24px 0 16px;
-  color: #303133;
-  font-size: 16px;
-}
-
-.info-content h4:first-child {
-  margin-top: 0;
-}
-
-:deep(.el-descriptions__label) {
-  width: 100px;
-  font-weight: bold;
-}
-
-:deep(.el-tag) {
-  margin-right: 8px;
-}
-
-:deep(.el-alert) {
-  margin-bottom: 12px;
-}
-
-:deep(.el-alert__title) {
-  font-size: 14px;
-}
-
-:deep(.el-alert--info) {
-  background-color: #f4f4f5;
+  gap: 12px;
   color: #606266;
 }
 
-:deep(.el-radio-group) {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 24px;
-}
-
-:deep(.el-input-number) {
-  width: 100%;
-}
-
-:deep(.el-input-number .el-input__wrapper) {
-  width: 100%;
-}
-
-.number-input-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 40px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.number-input-wrapper .el-button {
-  height: 100%;
-  margin: 0;
-  padding: 0 15px;
-  border: none;
-  border-radius: 0;
-  flex: 0 0 auto;
-}
-
-.number-display {
-  flex: 1;
-  text-align: center;
-  font-size: 16px;
-  color: #606266;
-  user-select: none;
-}
-
-/* 悬停效果 */
-.number-input-wrapper .el-button:not(:disabled):hover {
-  background-color: #f5f7fa;
-}
-
-/* 禁用状态 */
-.number-input-wrapper .el-button[disabled] {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
-}
-
-.import-export-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
+:deep(.el-descriptions) {
   margin-top: 16px;
 }
 
-.export-options {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  padding: 20px;
+:deep(.el-descriptions__cell) {
+  padding: 16px 20px;
 }
 
-:deep(.el-upload-dragger) {
-  width: 100%;
+.difficulty-detail {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-line;
 }
 
-:deep(.el-upload) {
-  width: 100%;
-}
+/* 响应式布局 */
+@media (max-width: 1200px) {
+  .practice-container {
+    height: auto;
+    overflow: visible;
+  }
 
-.el-upload__tip {
-  text-align: center;
-  margin-top: 8px;
-  color: #909399;
+  .practice-layout {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .config-card,
+  .info-card {
+    height: auto;
+  }
+  
+  .config-form,
+  .info-content {
+    height: auto;
+    overflow: visible;
+  }
 }
 </style> 
 
