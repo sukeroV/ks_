@@ -153,62 +153,87 @@ def update_user(user_id):
 # 习题集相关接口
 @main.route('/api/exercise-set', methods=['POST'])
 def create_exercise_set():
-    """创建习题集"""
-    data = request.get_json()
-    current_app.logger.info(f"Received data for exercise set: {data}")
+    """创建练习集"""
     try:
-        # 创建习题集
-        exercise_set = ExerciseSet(
-            user_id=data['user_id'],
-            total_expressions=data['total_expressions'],
-            bracket_expressions=data['bracket_expressions'],
-            time_limit=data['time_limit'],
-            operators=','.join(data['operators']),
-            operator_count=data['operator_count'],
-            min_number=data['min_number'],
-            max_number=data['max_number']
-        )
-        db.session.add(exercise_set)
-        db.session.commit()
+        data = request.get_json()
         
-        current_app.logger.info(f"Exercise set created with ID: {exercise_set.exercise_set_id}")
-        
-        # 使用表达式生成器生成题目
-        generator = ExpressionGenerator(
-            selected_operators=data.get('operators', ['+', '-']),
-            operator_count=data.get('operator_count', 1),
-            min_number=data.get('min_number', 1),
-            max_number=data.get('max_number', 20)
-        )
-        expressions = generator.generate_expressions(
-            count=data['total_expressions'],
-            bracket_count=data['bracket_expressions']
-        )
-        
-        current_app.logger.info(f"Generated expressions: {expressions}")
-        
-        # 保存表达式
-        for expr_info in expressions:
-            expression = Expression(
-                exercise_set_id=exercise_set.exercise_set_id,
-                expression_text=expr_info['expression_text'],
-                answer=expr_info['answer'],
-                has_brackets=expr_info['has_brackets'],
-                operator_count=expr_info['operator_count']
+        # 如果是从错题集生成练习
+        if data.get('from_mistakes'):
+            # 获取用户的错题
+            mistakes = data.get('mistakes', [])
+            
+            # 创建练习集
+            exercise_set = ExerciseSet(
+                user_id=data['user_id'],
+                total_expressions=len(mistakes),
+                bracket_expressions=sum(1 for m in mistakes if '(' in m['expression_text']),
+                time_limit=data.get('time_limit', 10),
+                operators=','.join([m['expression_text'] for m in mistakes[:20]]),  # 限制题目数量
+                operator_count=2,
+                min_number=1,
+                max_number=100
             )
-            db.session.add(expression)
+        else:
+            # 正常创建练习集
+            exercise_set = ExerciseSet(
+                user_id=data['user_id'],
+                total_expressions=data['total_expressions'],
+                bracket_expressions=data.get('bracket_expressions', 0),
+                time_limit=data['time_limit'],
+                operators=','.join(data['operators']),
+                operator_count=data['operator_count'],
+                min_number=data['min_number'],
+                max_number=data['max_number']
+            )
+            
+        db.session.add(exercise_set)
+        db.session.flush()
+        
+        # 如果是从错题集生成练习，直接使用已有的题目
+        if data.get('from_mistakes'):
+            for mistake in mistakes[:20]:  # 限制题目数量
+                expression = Expression(
+                    exercise_set_id=exercise_set.exercise_set_id,
+                    expression_text=mistake['expression_text'],
+                    answer=mistake['answer'],
+                    has_brackets='(' in mistake['expression_text'],
+                    operator_count=sum(1 for c in mistake['expression_text'] if c in '+-×÷')
+                )
+                db.session.add(expression)
+        else:
+            # 生成新的题目
+            generator = ExpressionGenerator(
+                selected_operators=data['operators'],
+                operator_count=data['operator_count'],
+                min_number=data['min_number'],
+                max_number=data['max_number']
+            )
+            expressions = generator.generate_expressions(
+                count=data['total_expressions'],
+                bracket_count=data.get('bracket_expressions', 0)
+            )
+            
+            for expr in expressions:
+                expression = Expression(
+                    exercise_set_id=exercise_set.exercise_set_id,
+                    expression_text=expr['expression_text'],
+                    answer=expr['answer'],
+                    has_brackets='(' in expr['expression_text'],
+                    operator_count=sum(1 for c in expr['expression_text'] if c in '+-×÷')
+                )
+                db.session.add(expression)
         
         db.session.commit()
         
         return jsonify({
-            "message": "习题集创建成功",
+            "message": "练习集创建成功",
             "exercise_set_id": exercise_set.exercise_set_id
-        }), 201
+        })
         
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating exercise set: {str(e)}")
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
 @main.route('/api/exercise-set/<int:exercise_set_id>')
 def get_exercise_set(exercise_set_id):
@@ -560,7 +585,7 @@ def get_practice_records():
                     'id': record.record_id,  # 使用 record_id 而不是 id
                     'exercise_set_id': record.exercise_set_id,
                     'completion_time': record.completion_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'duration': total_duration,  # 使用计���后的总用时
+                    'duration': total_duration,  # 使用计算后的总用时
                     'total_expressions': record.total_expressions,
                     'bracket_expressions': record.bracket_expressions,
                     'time_limit': record.time_limit,
@@ -695,7 +720,7 @@ def get_user_statistics(user_id):
         
         week_stats.reverse()
         
-        # 计��总正确率
+        # 计算总正确率
         average_accuracy = (total_correct / total_questions * 100) if total_questions > 0 else 0
         
         # 修改答题用分布计算逻辑

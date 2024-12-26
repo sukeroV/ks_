@@ -38,7 +38,7 @@ class ExerciseSet(db.Model):
     bracket_expressions = db.Column(db.Integer, nullable=False, default=0, comment='括号题目数')
     time_limit = db.Column(db.Integer, nullable=False, comment='时间限制(分钟)')
     create_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, comment='创建时间')
-    operators = db.Column(db.String(50), nullable=False, comment='运算符列表')
+    operators = db.Column(db.String(1000), nullable=False, comment='运算符列表')
     operator_count = db.Column(db.Integer, nullable=False, comment='运算符数量')
     min_number = db.Column(db.Integer, nullable=False, comment='最小值')
     max_number = db.Column(db.Integer, nullable=False, comment='最大值')
@@ -113,7 +113,7 @@ class ErrorRecord(db.Model):
     """错题记录表：记录用户的错题信息"""
     __tablename__ = 'error_record'
     error_record_id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='错题记录ID')
-    answer_record_id = db.Column(db.Integer, db.ForeignKey('answer_record.answer_record_id'), nullable=False, comment='对应的答题记录ID')
+    answer_record_id = db.Column(db.Integer, db.ForeignKey('answer_record.answer_record_id'), nullable=False, comment='对应���答题记录ID')
     is_exported = db.Column(db.Boolean, default=False, comment='是否已导出')
     export_time = db.Column(db.DateTime, nullable=True, comment='导出时间')
     
