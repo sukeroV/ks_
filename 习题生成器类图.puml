@@ -1,0 +1,74 @@
+@startuml 习题生成器执行流程
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+participant "生成器" as generator
+participant "表达式树" as tree
+participant "计算器" as calculator
+participant "验证器" as validator
+
+== 初始化阶段 ==
+[-> generator: 开始生成算式
+activate generator
+generator -> generator: 初始化参数\n(数值范围/运算符/年级)
+
+== 构建表达式树 ==
+generator -> tree: 创建空表达式树
+activate tree
+note right
+  表达式树示例：
+      +
+    /   \
+   2     *
+       /   \
+      3     4
+end note
+
+generator -> tree: 生成根节点(随机运算符)
+loop 直到达到指定复杂度
+    generator -> tree: 生成子节点
+    alt 生成数值节点
+        generator -> generator: 生成随机数
+        generator -> tree: 添加数值节点
+    else 生成运算符节点
+        generator -> generator: 生成随机运算符
+        generator -> tree: 添加运算符节点
+    end
+end
+tree --> generator: 返回完整表达式树
+deactivate tree
+
+== 计算结果 ==
+generator -> calculator: 计算表达式结果
+activate calculator
+calculator -> calculator: 后序遍历表达式树
+loop 遍历节点
+    alt 数值节点
+        calculator -> calculator: 返回数值
+    else 运算符节点
+        calculator -> calculator: 执行运算
+    end
+end
+calculator --> generator: 返回计算结果
+deactivate calculator
+
+== 验证阶段 ==
+generator -> validator: 验证结果
+activate validator
+validator -> validator: 检查结果是否为整数
+validator -> validator: 检查结果是否在范围内
+validator -> validator: 检查是否符合年级要求
+validator --> generator: 返回验证结果
+deactivate validator
+
+alt 验证通过
+    generator -> generator: 转换为字符串表达式
+    [<-- generator: 返回生成的算式
+else 验证失败
+    generator -> generator: 重新生成
+end
+deactivate generator
+
+@enduml 

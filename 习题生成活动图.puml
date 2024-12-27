@@ -1,0 +1,26 @@
+@startuml 习题生成活动图
+!theme plain
+start
+:设置习题参数;
+:验证参数有效性;
+if (参数有效?) then (yes)
+  :初始化习题集;
+  while (生成的题目数 < 目标数量)
+    :生成随机数值;
+    :生成运算符;
+    if (需要括号?) then (yes)
+      :添加括号;
+    endif
+    :计算结果;
+    if (结果合法?) then (yes)
+      :保存算式;
+    else (no)
+      :丢弃算式;
+    endif
+  endwhile
+  :保存习题集;
+else (no)
+  :返回错误信息;
+endif
+stop
+@enduml 

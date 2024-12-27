@@ -1,0 +1,72 @@
+@startuml 习题生成器组件图
+
+!theme plain
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+
+package "习题生成器" {
+    [参数验证器] as validator
+    [数值生成器] as numberGen
+    [运算符生成器] as operatorGen
+    [括号处理器] as bracketHandler
+    [结果验证器] as resultValidator
+    [表达式构建器] as expressionBuilder
+    [难度控制器] as difficultyController
+    
+    interface "习题参数" as params
+    interface "生成结果" as result
+    
+    database "算式模板库" as templates
+    database "难度规则库" as rules
+}
+
+params --> validator
+validator --> difficultyController
+
+difficultyController --> numberGen
+difficultyController --> operatorGen
+difficultyController --> bracketHandler
+difficultyController <-- rules
+
+numberGen --> expressionBuilder
+operatorGen --> expressionBuilder
+bracketHandler --> expressionBuilder
+expressionBuilder <-- templates
+
+expressionBuilder --> resultValidator
+resultValidator --> result
+
+note right of params
+  参数包含：
+  * 年级
+  * 题目数量
+  * 数值范围
+  * 运算符类型
+  * 是否包含括号
+end note
+
+note left of result
+  生成结果：
+  * 算式字符串
+  * 正确答案
+  * 难度等级
+  * 知识点标签
+end note
+
+note right of difficultyController
+  难度控制规则：
+  * 数值范围控制
+  * 运算符组合
+  * 括号复杂度
+  * 计算步骤数
+end note
+
+note left of templates
+  模板类型：
+  * 基础四则运算
+  * 混合运算
+  * 括号运算
+  * 特殊题型
+end note
+
+@enduml 

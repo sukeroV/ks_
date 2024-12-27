@@ -21,9 +21,9 @@ models -> db: 查询用户数据
 db --> models: 返回用户信息
 models --> routes: 验证结果
 deactivate models
-routes --> server: 返回Token
+routes --> server: 返回用户信息
 deactivate routes
-server --> user: 登录成功/失败
+server --> user: 登录成功/失败/储存到浏览器
 deactivate server
 
 == 习题集生成流程 ==
