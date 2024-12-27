@@ -13,7 +13,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://sukerov.pythonanywhere.com',
+        // target: 'https://sukerov.pythonanywhere.com',
+        target: 'http://127.0.0.1:6565',
         changeOrigin: true,
         secure: false
       }

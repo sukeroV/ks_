@@ -121,23 +121,11 @@
             </template>
           </el-table-column>
           
-<!--          <el-table-column prop="answer_time" label="用时" width="100">-->
-<!--            <template #default="scope">-->
-<!--              {{ formatTime(scope.row.answer_time) }}秒-->
-<!--            </template>-->
-<!--          </el-table-column>-->
-          
           <el-table-column prop="difficulty" label="难度" width="100">
             <template #default="scope">
               <el-tag :type="getDifficultyType(scope.row.difficulty)">
                 {{ getDifficultyLabel(scope.row.difficulty) }}
               </el-tag>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="error_count" label="错误次数" width="100">
-            <template #default="scope">
-              <el-tag type="info">{{ scope.row.error_count }}次</el-tag>
             </template>
           </el-table-column>
           
@@ -384,7 +372,6 @@ const practiceAgain = async (mistake: any) => {
 // 修改导出处理函数
 const handleExport = async (type: string) => {
   try {
-    // 如果没有选中任何题目，提示用户
     if (selectedMistakes.value.length === 0) {
       ElMessage.warning('请先选择要导出的错题')
       return
@@ -393,15 +380,13 @@ const handleExport = async (type: string) => {
     loading.value = true
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     
-    // 获取要导出的错题ID列表和相关信息
+    // 获取要导出的错题信息，移除错误次数
     const exportData = selectedMistakes.value.map(item => ({
       id: item.id,
       expression: item.expression,
       correct_answer: item.correct_answer,
       user_answer: item.user_answer,
-      answer_time: item.answer_time,
-      completion_time: formatDate(item.completion_time),
-      error_count: item.error_count  // 添加错误次数
+      completion_time: formatDate(item.completion_time)
     }))
     
     // 发起导出请求
@@ -409,7 +394,7 @@ const handleExport = async (type: string) => {
       `/api/error-records/${user.user_id}/export`, 
       {
         type,
-        mistakes: exportData  // 发送完整的错题信息
+        mistakes: exportData
       },
       {
         responseType: 'blob'

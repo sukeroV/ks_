@@ -27,6 +27,7 @@ import csv
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from io import StringIO
+import re
 
 main = Blueprint('main', __name__)
 
@@ -434,13 +435,19 @@ def create_practice_from_mistakes():
         if not expressions:
             return jsonify({"error": "未找到指定的错题"}), 404
 
+        # 定义一个正则表达式模式来匹配操作符
+        pattern = r'[+\-×÷]'
+        
+        # 使用 findall 方法找到所有匹配的操作符，并转换为集合以去除重复项
+        operators = set(re.findall(pattern, ','.join(set(''.join(e.expression_text.split()) for e in expressions))))
+
         # 创建新的练习集
         exercise_set = ExerciseSet(
             user_id=user_id,
             total_expressions=len(expressions),
             bracket_expressions=sum(1 for e in expressions if e.has_brackets),
             time_limit=30,  # 默认30分钟
-            operators=','.join(set(''.join(e.expression_text.split()) for e in expressions)),
+            operators=','.join(operators),
             operator_count=max(e.operator_count for e in expressions),
             min_number=0,
             max_number=100
@@ -849,8 +856,8 @@ def export_error_records(user_id):
                 details.add_run(str(round(mistake['user_answer'],2)))
                 # details.add_run('   用时：').bold = True
                 # details.add_run(f'{mistake["answer_time"]:.1f}秒')
-                details.add_run('   错误次数：').bold = True
-                details.add_run(str(mistake['error_count']))
+                # details.add_run('   错误次数：').bold = True
+                # details.add_run(str(mistake['error_count']))
                 
                 # 添加分隔线
                 if idx < len(mistakes):
@@ -873,7 +880,7 @@ def export_error_records(user_id):
             writer = csv.writer(output)
             
             # 写入表头
-            writer.writerow(['序号', '算式', '正确答案', '你的答案', '错误次数'])
+            writer.writerow(['序号', '算式', '正确答案', '你的答案'])
             
             # 写入数据
             for idx, mistake in enumerate(mistakes, 1):
@@ -881,10 +888,10 @@ def export_error_records(user_id):
                     idx,
                     mistake['expression'],
                     mistake['correct_answer'],
-                    round(mistake['user_answer'],2),
+                    round(mistake['user_answer'],2)
                     # f"{mistake['answer_time']:.1f}",
                     # mistake['completion_time'],
-                    mistake['error_count']
+                    # mistake['error_count']
                 ])
             
             # 获取CSV内容并添加BOM
@@ -915,6 +922,12 @@ def complete_exercise_set(exercise_set_id):
         exercise_set = ExerciseSet.query.get(exercise_set_id)
         if not exercise_set:
             return jsonify({"error": "练习集不存在"}), 404
+
+        # 定义一个正则表达式模式来匹配操作符
+        pattern = r'[+\-×÷]'
+        
+        # 使用 findall 方法找到所有匹配的操作符，并转换为集合以去除重复项
+        operators = set(re.findall(pattern, exercise_set.operators))
             
         # 创建练习记录
         practice_record = PracticeRecord(
@@ -928,7 +941,8 @@ def complete_exercise_set(exercise_set_id):
             total_expressions=exercise_set.total_expressions,
             bracket_expressions=exercise_set.bracket_expressions,
             time_limit=exercise_set.time_limit,
-            operators=exercise_set.operators,
+            # operators=exercise_set.operators,
+            operators=','.join(operators),  # 将集合转换成逗号分隔的字符串存储
             operator_count=exercise_set.operator_count,
             min_number=exercise_set.min_number,
             max_number=exercise_set.max_number
