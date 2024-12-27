@@ -1,0 +1,15 @@
+cd backend
+python -m venv ks_venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python init_db.py
+flask run
+
+
+
+# 生成requirements.txt
+freeze > requirements.txt 
+
+cd frontend
+npm install
+npm run dev

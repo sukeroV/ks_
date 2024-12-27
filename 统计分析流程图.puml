@@ -1,0 +1,104 @@
+@startuml 统计分析流程
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "用户" as user
+participant "统计页面" as stats_page
+participant "统计Store" as stats_store
+participant "统计API" as stats_api
+participant "Flask Server" as server
+participant "Stats Model" as stats_model
+database "MySQL" as db
+
+== 个人统计分析 ==
+user -> stats_page: 查看个人统计
+activate stats_page
+stats_page -> stats_api: 获取统计数据
+activate stats_api
+stats_api -> server: GET /api/statistics/personal
+activate server
+server -> stats_model: 查询练习记录
+activate stats_model
+
+stats_model -> db: 查询练习总数
+db --> stats_model: 练习数据
+stats_model -> db: 查询正确率
+db --> stats_model: 正确率数据
+stats_model -> db: 查询平均用时
+db --> stats_model: 用时数据
+stats_model -> db: 查询错题分布
+db --> stats_model: 错题数据
+
+stats_model -> stats_model: 数据分析处理
+note right
+    分析内容：
+    1. 计算进步趋势
+    2. 分析薄弱点
+    3. 生成建议
+    4. 统计练习时长
+end note
+
+stats_model --> server: 返回统计结果
+deactivate stats_model
+server --> stats_api: 返回分析数据
+deactivate server
+stats_api -> stats_store: 更新统计状态
+stats_api --> stats_page: 返回统计信息
+deactivate stats_api
+stats_page --> user: 显示统计图表
+deactivate stats_page
+
+== 错题本分析 ==
+user -> stats_page: 查看错题本
+activate stats_page
+stats_page -> stats_api: 获取错题列表
+activate stats_api
+stats_api -> server: GET /api/statistics/errors
+activate server
+server -> stats_model: 查询错题记录
+activate stats_model
+stats_model -> db: SELECT FROM error_records
+db --> stats_model: 错题数据
+stats_model -> stats_model: 错题分类分析
+stats_model --> server: 返回错题分析
+deactivate stats_model
+server --> stats_api: 返回错题数据
+deactivate server
+stats_api -> stats_store: 更新错题本
+stats_api --> stats_page: 返回错题列表
+deactivate stats_api
+stats_page --> user: 显示错题本
+deactivate stats_page
+
+== 进度跟踪分析 ==
+user -> stats_page: 查看学习进度
+activate stats_page
+stats_page -> stats_api: 获取进度数据
+activate stats_api
+stats_api -> server: GET /api/statistics/progress
+activate server
+server -> stats_model: 查询学习记录
+activate stats_model
+stats_model -> db: 查询练习记录
+db --> stats_model: 练习数据
+stats_model -> stats_model: 计算进度指标
+note right
+    进度指标：
+    1. 完成题目数
+    2. 知识点覆盖
+    3. 难度提升
+    4. 速度提升
+end note
+stats_model --> server: 返回进度分析
+deactivate stats_model
+server --> stats_api: 返回进度数据
+deactivate server
+stats_api -> stats_store: 更新进度状态
+stats_api --> stats_page: 返回进度信息
+deactivate stats_api
+stats_page --> user: 显示进度报告
+deactivate stats_page
+
+@enduml 

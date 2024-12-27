@@ -1,0 +1,112 @@
+@startuml 前端交互流程时序图
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "用户" as user
+participant "Vue App" as app
+participant "Router" as router
+participant "Store" as store
+participant "API Service" as api
+participant "Backend\nServer" as server
+
+== 页面导航流程 ==
+user -> app: 访问应用
+activate app
+app -> router: 路由初始化
+activate router
+router -> store: 检查登录状态
+activate store
+store --> router: 返回状态
+deactivate store
+router --> app: 导航到对应页面
+deactivate router
+app --> user: 显示页面
+deactivate app
+
+== 用户登录流程 ==
+user -> app: 输入登录信息
+activate app
+app -> api: 发送登录请求
+activate api
+api -> server: POST /api/login
+server --> api: 返回Token
+api -> store: 保存Token和用户信息
+activate store
+store --> api: 保存成功
+deactivate store
+api --> app: 登录成功
+deactivate api
+app -> router: 导航到主页
+app --> user: 显示登录成功
+deactivate app
+
+== 习题练习流程 ==
+user -> app: 开始练习
+activate app
+app -> api: 获取习题集
+activate api
+api -> server: GET /api/exercise-set
+server --> api: 返回习题数据
+api -> store: 保存习题数据
+activate store
+store --> api: 保存成功
+deactivate store
+api --> app: 返回习题
+deactivate api
+app --> user: 显示习题
+deactivate app
+
+user -> app: 提交答案
+activate app
+app -> store: 临时保存答案
+activate store
+store --> app: 保存成功
+deactivate store
+app -> api: 提交答案
+activate api
+api -> server: POST /api/answer
+server --> api: 返回结果
+api -> store: 更新练习状态
+activate store
+store --> api: 更新成功
+deactivate store
+api --> app: 返回答题结果
+deactivate api
+app --> user: 显示答题反馈
+deactivate app
+
+== 练习统计流程 ==
+user -> app: 查看练习统计
+activate app
+app -> api: 获取统计数据
+activate api
+api -> server: GET /api/statistics
+server --> api: 返回统计数据
+api -> store: 保存统计数据
+activate store
+store --> api: 保存成功
+deactivate store
+api --> app: 返回统计信息
+deactivate api
+app --> user: 显示统计图表
+deactivate app
+
+== 错题复习流程 ==
+user -> app: 进入错题本
+activate app
+app -> api: 获取错题列表
+activate api
+api -> server: GET /api/errors
+server --> api: 返回错题数据
+api -> store: 保存错题数据
+activate store
+store --> api: 保存成功
+deactivate store
+api --> app: 返回错题列表
+deactivate api
+app --> user: 显示错题本
+deactivate app
+
+@enduml 

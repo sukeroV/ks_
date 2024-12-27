@@ -1,0 +1,108 @@
+@startuml 用户认证流程
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "用户" as user
+participant "Vue App" as app
+participant "Router" as router
+participant "Auth Store" as auth_store
+participant "Auth API" as auth_api
+participant "Flask Auth" as auth_server
+participant "User Model" as user_model
+database "MySQL" as db
+
+== 登录流程 ==
+user -> app: 输入用户名密码
+activate app
+app -> auth_api: 发送登录请求
+activate auth_api
+auth_api -> auth_server: POST /api/auth/login
+activate auth_server
+auth_server -> user_model: 查询用户
+activate user_model
+user_model -> db: SELECT * FROM users
+db --> user_model: 用户数据
+user_model -> user_model: 验证密码
+user_model --> auth_server: 验证结果
+deactivate user_model
+
+alt 验证成功
+    auth_server -> auth_server: 生成JWT Token
+    auth_server --> auth_api: 返回Token和用户信息
+    auth_api -> auth_store: 保存认证状态
+    activate auth_store
+    auth_store -> auth_store: 存储Token
+    auth_store -> auth_store: 保存用户信息
+    auth_store --> auth_api: 保存完成
+    deactivate auth_store
+    auth_api --> app: 登录成功
+    app -> router: 导航到主页
+    app --> user: 显示登录成功
+else 验证失败
+    auth_server --> auth_api: 返回错误信息
+    auth_api --> app: 登录失败
+    app --> user: 显示错误信息
+end
+deactivate auth_server
+deactivate auth_api
+deactivate app
+
+== 注册流程 ==
+user -> app: 填写注册信息
+activate app
+app -> auth_api: 发送注册请求
+activate auth_api
+auth_api -> auth_server: POST /api/auth/register
+activate auth_server
+auth_server -> user_model: 检查用户名是否存在
+activate user_model
+user_model -> db: SELECT username FROM users
+db --> user_model: 查询结果
+user_model --> auth_server: 用户名检查结果
+
+alt 用户名可用
+    auth_server -> user_model: 创建新用户
+    user_model -> user_model: 加密密码
+    user_model -> db: INSERT INTO users
+    db --> user_model: 创建成功
+    user_model --> auth_server: 返回用户信息
+    auth_server -> auth_server: 生成JWT Token
+    auth_server --> auth_api: 返回Token和用户信息
+    auth_api -> auth_store: 保存认证状态
+    auth_api --> app: 注册成功
+    app -> router: 导航到主页
+    app --> user: 显示注册成功
+else 用户名已存在
+    auth_server --> auth_api: 返回错误信息
+    auth_api --> app: 注册失败
+    app --> user: 显示错误信息
+end
+deactivate user_model
+deactivate auth_server
+deactivate auth_api
+deactivate app
+
+== Token验证流程 ==
+router -> auth_store: 检查Token
+activate auth_store
+auth_store -> auth_api: 验证Token
+activate auth_api
+auth_api -> auth_server: POST /api/auth/verify
+activate auth_server
+auth_server -> auth_server: 验证Token有效性
+alt Token有效
+    auth_server --> auth_api: Token有效
+    auth_api --> auth_store: 验证成功
+    auth_store --> router: 允许访问
+else Token无效
+    auth_server --> auth_api: Token无效
+    auth_api -> auth_store: 清除认证状态
+    auth_store --> router: 重定向到登录页
+end
+deactivate auth_server
+deactivate auth_api
+deactivate auth_store
+
+@enduml 

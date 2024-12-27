@@ -1,0 +1,62 @@
+@startuml 口算练习系统架构
+
+!theme plain
+skinparam backgroundColor white
+skinparam componentStyle rectangle
+
+' 定义组件
+package "Frontend" {
+    [Vue.js App] as vue
+    [Vite Server\nport:5173] as vite
+    [Router] as router
+    [Store] as store
+    [Components] as components
+}
+
+package "Backend" {
+    [Flask Server\nport:6565] as flask
+    [Routes] as routes
+    [Models] as models
+    [Utils] as utils
+    database "MySQL DB" as db
+}
+
+' 定义关系
+vue --> vite : 开发构建
+vue --> router : 路由管理
+vue --> store : 状态管理
+vue --> components : 组件复用
+
+vite --> flask : API请求\nHTTP/JSON
+
+flask --> routes : 路由分发
+routes --> models : 数据操作
+routes --> utils : 工具函数
+models --> db : CRUD操作
+
+' 添加说明
+note right of vue
+  前端技术栈:
+  - Vue 3
+  - TypeScript
+  - Vite
+  - Vue Router
+  - Pinia
+end note
+
+note right of flask
+  后端技术栈:
+  - Python
+  - Flask
+  - SQLAlchemy
+  - MySQL
+end note
+
+note bottom of db
+  数据存储:
+  - 题目管理
+  - 用户数据
+  - 练习记录
+end note
+
+@enduml 

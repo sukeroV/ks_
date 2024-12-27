@@ -1,0 +1,100 @@
+@startuml 习题管理流程
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "教师" as teacher
+participant "习题管理页面" as exercise_page
+participant "习题Store" as exercise_store
+participant "习题API" as exercise_api
+participant "Flask Server" as server
+participant "Exercise Model" as exercise_model
+database "MySQL" as db
+
+== 创建习题集流程 ==
+teacher -> exercise_page: 设置习题参数
+activate exercise_page
+note right
+    设置参数包括：
+    - 年级
+    - 题目数量
+    - 运算符类型
+    - 数值范围
+    - 是否包含括号
+    - 时间限制
+end note
+
+exercise_page -> exercise_api: 发送创建请求
+activate exercise_api
+exercise_api -> server: POST /api/exercise-sets
+activate server
+server -> exercise_model: 创建习题集
+activate exercise_model
+
+exercise_model -> exercise_model: 生成算式
+note right
+    算式生成规则：
+    1. 根据年级控制难度
+    2. 确保结果在合理范围
+    3. 生成括号位置
+    4. 验证算式有效性
+end note
+
+exercise_model -> db: 保存习题集信息
+db --> exercise_model: 保存成功
+exercise_model -> db: 批量保存算式
+db --> exercise_model: 保存成功
+exercise_model --> server: 返回习题集信息
+deactivate exercise_model
+server --> exercise_api: 返回创建结果
+deactivate server
+exercise_api -> exercise_store: 更新习题列表
+exercise_api --> exercise_page: 创建成功
+deactivate exercise_api
+exercise_page --> teacher: 显示创建结果
+deactivate exercise_page
+
+== 习题集管理流程 ==
+teacher -> exercise_page: 查看习题集列表
+activate exercise_page
+exercise_page -> exercise_api: 获取习题集列表
+activate exercise_api
+exercise_api -> server: GET /api/exercise-sets
+activate server
+server -> exercise_model: 查询习题集
+activate exercise_model
+exercise_model -> db: SELECT FROM exercise_sets
+db --> exercise_model: 习题集数据
+exercise_model --> server: 返回习题集列表
+deactivate exercise_model
+server --> exercise_api: 返回列表数据
+deactivate server
+exercise_api -> exercise_store: 更新列表数据
+exercise_api --> exercise_page: 返回列表
+deactivate exercise_api
+exercise_page --> teacher: 显示习题集列表
+deactivate exercise_page
+
+== 习题集修改流程 ==
+teacher -> exercise_page: 修改习题集
+activate exercise_page
+exercise_page -> exercise_api: 发送修改请求
+activate exercise_api
+exercise_api -> server: PUT /api/exercise-sets/{id}
+activate server
+server -> exercise_model: 更新习题集
+activate exercise_model
+exercise_model -> db: UPDATE exercise_sets
+db --> exercise_model: 更新成功
+exercise_model --> server: 返回更新结果
+deactivate exercise_model
+server --> exercise_api: 返回修改结果
+deactivate server
+exercise_api -> exercise_store: 更新本地数据
+exercise_api --> exercise_page: 修改成功
+deactivate exercise_api
+exercise_page --> teacher: 显示修改结果
+deactivate exercise_page
+
+@enduml 

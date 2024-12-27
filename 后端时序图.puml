@@ -1,0 +1,93 @@
+@startuml 后端处理流程时序图
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "用户" as user
+participant "Flask Server\nport:6565" as server
+participant "Routes" as routes
+participant "Models" as models
+database "MySQL" as db
+
+== 用户认证流程 ==
+user -> server: 登录请求
+activate server
+server -> routes: 路由到登录处理
+activate routes
+routes -> models: 验证用户信息
+activate models
+models -> db: 查询用户数据
+db --> models: 返回用户信息
+models --> routes: 验证结果
+deactivate models
+routes --> server: 返回Token
+deactivate routes
+server --> user: 登录成功/失败
+deactivate server
+
+== 习题集生成流程 ==
+user -> server: 创建习题集请求
+activate server
+server -> routes: 路由到习题集处理
+activate routes
+routes -> models: 创建习题集
+activate models
+models -> models: 生成算式
+models -> db: 保存习题集和算式
+db --> models: 保存成功
+models --> routes: 返回习题集信息
+deactivate models
+routes --> server: 返回习题集数据
+deactivate routes
+server --> user: 返回创建结果
+deactivate server
+
+== 练习过程流程 ==
+user -> server: 开始练习请求
+activate server
+server -> routes: 路由到练习处理
+activate routes
+routes -> models: 获取习题集
+activate models
+models -> db: 查询习题数据
+db --> models: 返回习题数据
+models --> routes: 返回习题信息
+deactivate models
+routes --> server: 返回练习数据
+deactivate routes
+server --> user: 返回习题内容
+deactivate server
+
+user -> server: 提交答案
+activate server
+server -> routes: 路由到答案处理
+activate routes
+routes -> models: 保存答题记录
+activate models
+models -> db: 保存答案和统计
+db --> models: 保存成功
+models --> routes: 返回答题结果
+deactivate models
+routes --> server: 返回结果数据
+deactivate routes
+server --> user: 返回答题反馈
+deactivate server
+
+== 错题统计流程 ==
+user -> server: 查看错题请求
+activate server
+server -> routes: 路由到错题处理
+activate routes
+routes -> models: 获取错题记录
+activate models
+models -> db: 查询错题数据
+db --> models: 返回错题信息
+models --> routes: 返回错题统计
+deactivate models
+routes --> server: 返回统计数据
+deactivate routes
+server --> user: 返回错题分析
+deactivate server
+
+@enduml 

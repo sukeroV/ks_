@@ -13,7 +13,7 @@ pip install -r requirements.txt
 mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS ks_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 :: 初始化数据库表
-python init_db.py
+:: REM python init_db.py
 
 :: 运行Flask应用
 python run.py 

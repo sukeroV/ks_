@@ -1,0 +1,100 @@
+@startuml 练习过程流程
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor "学生" as student
+participant "练习页面" as practice_page
+participant "练习Store" as practice_store
+participant "练习API" as practice_api
+participant "Flask Server" as server
+participant "Practice Model" as practice_model
+database "MySQL" as db
+
+== 开始练习流程 ==
+student -> practice_page: 选择习题集
+activate practice_page
+practice_page -> practice_api: 获取习题集详情
+activate practice_api
+practice_api -> server: GET /api/exercise-sets/{id}
+activate server
+server -> practice_model: 查询习题集
+activate practice_model
+practice_model -> db: SELECT * FROM exercise_sets
+db --> practice_model: 习题集数据
+practice_model -> db: SELECT * FROM expressions
+db --> practice_model: 算式数据
+practice_model --> server: 返回完整数据
+deactivate practice_model
+server --> practice_api: 返回习题集
+deactivate server
+practice_api -> practice_store: 初始化练习状态
+activate practice_store
+practice_store -> practice_store: 设置计时器
+practice_store -> practice_store: 准备第一题
+practice_store --> practice_api: 初始化完成
+deactivate practice_store
+practice_api --> practice_page: 返回第一题
+deactivate practice_api
+practice_page --> student: 显示练习界面
+deactivate practice_page
+
+== 答题过程流程 ==
+student -> practice_page: 提交答案
+activate practice_page
+practice_page -> practice_store: 保存答案
+activate practice_store
+practice_store -> practice_store: 计算耗时
+practice_store -> practice_store: 验证答案
+practice_store --> practice_page: 返回验证结果
+deactivate practice_store
+practice_page -> practice_api: 提交答题记录
+activate practice_api
+practice_api -> server: POST /api/practice-records
+activate server
+server -> practice_model: 保存答题记录
+activate practice_model
+practice_model -> db: INSERT INTO practice_records
+db --> practice_model: 保存成功
+alt 答案错误
+    practice_model -> db: INSERT INTO error_records
+    db --> practice_model: 保存错题记录
+end
+practice_model --> server: 返回保存结果
+deactivate practice_model
+server --> practice_api: 返回提交结果
+deactivate server
+practice_api -> practice_store: 更新练习进度
+practice_api --> practice_page: 返回下一题
+deactivate practice_api
+practice_page --> student: 显示答题结果
+deactivate practice_page
+
+== 完成练习流程 ==
+student -> practice_page: 完成所有题目
+activate practice_page
+practice_page -> practice_store: 获取练习统计
+activate practice_store
+practice_store -> practice_store: 计算练习结果
+practice_store --> practice_page: 返回统计数据
+deactivate practice_store
+practice_page -> practice_api: 提交练习记录
+activate practice_api
+practice_api -> server: POST /api/practice-complete
+activate server
+server -> practice_model: 保存练习记录
+activate practice_model
+practice_model -> db: UPDATE practice_records
+db --> practice_model: 更新成功
+practice_model --> server: 返回练习报告
+deactivate practice_model
+server --> practice_api: 返回完成数据
+deactivate server
+practice_api -> practice_store: 清理练习状态
+practice_api --> practice_page: 返回练习报告
+deactivate practice_api
+practice_page --> student: 显示练习报告
+deactivate practice_page
+
+@enduml 
