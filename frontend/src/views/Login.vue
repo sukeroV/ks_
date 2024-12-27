@@ -6,7 +6,7 @@
       </template>
       
       <el-form :model="loginForm" :rules="rules" ref="loginFormRef">
-        <el-form-item prop="user_id" label="用户ID">
+        <el-form-item prop="user_id" label="用户">
           <el-input v-model="loginForm.user_id" placeholder="请输入用户ID"></el-input>
         </el-form-item>
         

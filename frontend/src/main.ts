@@ -8,9 +8,9 @@ import { ElMessage } from 'element-plus'
 import {Histogram} from "@element-plus/icons-vue";
 
 // 配置axios默认值
-axios.defaults.baseURL = 'http://localhost:6565'
+axios.defaults.baseURL = 'https://sukerov.pythonanywhere.com'
 axios.defaults.headers.common['Content-Type'] = 'application/json'
-axios.defaults.withCredentials = false  // 改为false
+axios.defaults.withCredentials = true  // 如果需要携带cookie
 
 // 添加请求拦截器
 axios.interceptors.request.use(

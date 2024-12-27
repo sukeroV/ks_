@@ -189,14 +189,23 @@
       v-model="exportDialogVisible"
       title="导出题目"
       width="400px"
+      class="export-dialog"
     >
       <div class="export-options">
-        <el-button @click="handleExport('docx')" type="primary" plain>
-          <el-icon><Document /></el-icon>
+        <el-button 
+          @click="handleExport('docx')" 
+          type="primary" 
+          class="export-button"
+        >
+          <el-icon class="export-icon"><Document /></el-icon>
           导出为 Word
         </el-button>
-        <el-button @click="handleExport('csv')" type="primary" plain>
-          <el-icon><Document /></el-icon>
+        <el-button 
+          @click="handleExport('csv')" 
+          type="primary" 
+          class="export-button"
+        >
+          <el-icon class="export-icon"><Document /></el-icon>
           导出为 CSV
         </el-button>
       </div>
@@ -545,6 +554,38 @@ const handleExport = async (format: string) => {
     height: auto;
     overflow: visible;
   }
+}
+
+/* 添加导出对话框相关样式 */
+.export-dialog :deep(.el-dialog__body) {
+  padding: 30px;
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.export-button {
+  width: 200px;
+  height: 50px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.export-icon {
+  font-size: 20px;
+}
+
+/* 添加悬停效果 */
+.export-button:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
 }
 </style> 
 
