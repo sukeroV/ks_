@@ -916,33 +916,31 @@ def complete_exercise_set(exercise_set_id):
         data = request.get_json()
         user_id = data.get('user_id')
         duration = data.get('duration', 0)
-        is_timeout = bool(data.get('is_timeout', False))  # 确保是布尔值
         
         # 获取练习集信息
         exercise_set = ExerciseSet.query.get(exercise_set_id)
         if not exercise_set:
             return jsonify({"error": "练习集不存在"}), 404
 
+        # 根据实际用时判断是否超时
+        is_timeout = duration >= (exercise_set.time_limit * 60)
+
         # 定义一个正则表达式模式来匹配操作符
         pattern = r'[+\-×÷]'
-        
-        # 使用 findall 方法找到所有匹配的操作符，并转换为集合以去除重复项
         operators = set(re.findall(pattern, exercise_set.operators))
             
         # 创建练习记录
         practice_record = PracticeRecord(
-            user_id=str(user_id),  # 确保是字符串
-            exercise_set_id=int(exercise_set_id),  # 确保是整数
+            user_id=str(user_id),
+            exercise_set_id=int(exercise_set_id),
             completion_time=datetime.now(Config.CHINA_TZ),
-            duration=int(duration),  # 确保是整数
-            is_timeout=is_timeout,
+            duration=int(duration),
+            is_timeout=is_timeout,  # 使用计算得出的超时状态
             is_completed=True,
-            # 从练习集获取配置信息
             total_expressions=exercise_set.total_expressions,
             bracket_expressions=exercise_set.bracket_expressions,
             time_limit=exercise_set.time_limit,
-            # operators=exercise_set.operators,
-            operators=','.join(operators),  # 将集合转换成逗号分隔的字符串存储
+            operators=','.join(operators),
             operator_count=exercise_set.operator_count,
             min_number=exercise_set.min_number,
             max_number=exercise_set.max_number
