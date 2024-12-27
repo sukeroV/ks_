@@ -259,11 +259,11 @@ const setupPracticeConfig = () => {
     practiceForm.value.bracket_expressions = 0
   } else if (grade <= 4) {
     practiceForm.value.operators = ['+', '-', '×']
-    practiceForm.value.operator_count = 1
+    practiceForm.value.operator_count = 3
     practiceForm.value.bracket_expressions = 0
   } else {
     practiceForm.value.operators = ['+', '-', '×', '÷']
-    practiceForm.value.operator_count = 2
+    practiceForm.value.operator_count = 4
     practiceForm.value.bracket_expressions = Math.min(practiceForm.value.bracket_expressions, 9)
   }
 }
