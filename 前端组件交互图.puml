@@ -1,0 +1,67 @@
+@startuml 前端组件交互图
+
+!theme plain
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+participant "Home.vue" as home
+participant "ElementPlus" as el
+participant "Echarts" as echarts
+participant "API Service" as api
+participant "后端服务器" as server
+
+== 页面初始化 ==
+[-> home: 进入首页
+activate home
+home -> api: 获取统计数据
+activate api
+api -> server: GET /api/statistics/overview
+server --> api: 返回统计数据
+api --> home: 返回处理后的数据
+deactivate api
+
+home -> echarts: 初始化图表
+activate echarts
+home -> echarts: 配置图表选项
+note right
+  图表配置：
+  - 练习次数统计
+  - 正确率趋势
+  - 用时分析
+  - 错题分布
+end note
+echarts -> echarts: 渲染图表
+echarts --> home: 图表渲染完成
+deactivate echarts
+
+== 数据展示 ==
+home -> el: 展示基础统计信息
+activate el
+note right
+  展示内容：
+  - 总练习次数
+  - 平均正确率
+  - 累计练习时长
+  - 待复习错题数
+end note
+el --> home: 渲染完成
+deactivate el
+
+== 数据更新 ==
+[-> home: 切换时间范围
+activate home
+home -> api: 请求新的统计数据
+activate api
+api -> server: GET /api/statistics/range
+server --> api: 返回新数据
+api --> home: 更新数据
+deactivate api
+
+home -> echarts: 更新图表数据
+activate echarts
+echarts -> echarts: 重新渲染
+echarts --> home: 更新完成
+deactivate echarts
+deactivate home
+
+@enduml 
