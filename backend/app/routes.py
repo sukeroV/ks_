@@ -1090,7 +1090,7 @@ def import_expressions():
             user_id=user_id,
             total_expressions=len(rows),
             bracket_expressions=0,
-            time_limit=10,
+            time_limit=30,
             operators='+,-,×,÷',
             operator_count=2,
             min_number=1,
